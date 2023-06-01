@@ -48,11 +48,11 @@ public class GAp implements BranchPredictor {
     @Override
     public BranchResult predict(BranchInstruction branchInstruction) {
         // TODO: complete Task 1
-        Bit[] jumpAddress = branchInstruction.getJumpAddress();
+        Bit[] jumpAddress = branchInstruction.getInstructionAddress();
         // Read the associated block with the BHR value
         Bit[] cacheBlock = PAPHT.setDefault(getCacheEntry(jumpAddress), getDefaultBlock());
 
-        
+
         // Load the read block from the cache into the SC register
         SC.load(cacheBlock);
 
@@ -74,7 +74,7 @@ public class GAp implements BranchPredictor {
 
 
         // Save the updated value into the cache via BHR
-        PAPHT.put(getCacheEntry(branchInstruction.getJumpAddress()), count);
+        PAPHT.put(getCacheEntry(branchInstruction.getInstructionAddress()), count);
 
         // Update the BHR with the actual branch result
         BHR.insert(Bit.of(actual == BranchResult.TAKEN));
