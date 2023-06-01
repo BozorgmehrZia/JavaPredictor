@@ -29,19 +29,20 @@ public class GAs implements BranchPredictor {
      */
     public GAs(int BHRSize, int SCSize, int branchInstructionSize, int KSize, HashMode hashmode) {
         // TODO: complete the constructor
-        this.branchInstructionSize = 0;
-        this.KSize = 0;
+        this.branchInstructionSize = branchInstructionSize;
+        this.KSize = KSize;
         this.hashMode = HashMode.XOR;
+        
 
         // Initialize the BHR register with the given size and no default value
-        BHR = null;
+        BHR = new SIPORegister("BHR", BHRSize, null);
 
         // Initializing the PAPHT with K bit as PHT selector and 2^BHRSize row as each PHT entries
         // number and SCSize as block size
-        PSPHT = null;
+        PSPHT = new PerAddressPredictionHistoryTable(KSize, 1 << BHRSize, SCSize);
 
         // Initialize the saturating counter
-        SC = null;
+        SC = new SIPORegister("SC", SCSize, null);
     }
 
     /**
@@ -54,7 +55,17 @@ public class GAs implements BranchPredictor {
     @Override
     public BranchResult predict(BranchInstruction branchInstruction) {
         // TODO: complete Task 1
-        return BranchResult.NOT_TAKEN;
+        Bit[] jumpAddress = branchInstruction.getInstructionAddress();
+        CombinationalLogic.hash(jumpAddress, KSize, HashMode.XOR);
+        // Read the associated block with the BHR value
+        Bit[] cacheBlock = PSPHT.setDefault(getCacheEntry(jumpAddress), getDefaultBlock());
+
+
+        // Load the read block from the cache into the SC register
+        SC.load(cacheBlock);
+
+        // Return the MSB of the read block or SC register
+        return BranchResult.of(SC.read()[0] == Bit.ONE);
     }
 
     /**
@@ -66,6 +77,15 @@ public class GAs implements BranchPredictor {
     @Override
     public void update(BranchInstruction branchInstruction, BranchResult actual) {
         // TODO: complete Task 2
+        Bit[] scBits = SC.read();
+        Bit[] count = CombinationalLogic.count(scBits, actual == BranchResult.TAKEN, CountMode.SATURATING);
+
+
+        // Save the updated value into the cache via BHR
+        PSPHT.put(getCacheEntry(branchInstruction.getInstructionAddress()), count);
+
+        // Update the BHR with the actual branch result
+        BHR.insert(Bit.of(actual == BranchResult.TAKEN));
     }
 
     /**
