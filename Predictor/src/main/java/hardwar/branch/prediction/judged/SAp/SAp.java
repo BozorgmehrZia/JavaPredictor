@@ -62,7 +62,7 @@ public class SAp implements BranchPredictor {
 
 
         // Save the updated value into the cache via BHR
-        PAPHT.put(PSBHR.read(getRBAddressLine(instructionAddress)).read(), count);
+        PAPHT.put(getCacheEntry(instructionAddress, PSBHR.read(getRBAddressLine(instructionAddress)).read()), count);
 
         // Update the BHR with the actual branch result
         ShiftRegister read = PSBHR.read(getRBAddressLine(instructionAddress));
