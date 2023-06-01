@@ -26,7 +26,7 @@ public class GAp implements BranchPredictor {
     public GAp(int BHRSize, int SCSize, int branchInstructionSize) {
         // TODO: complete the constructor
 
-        this.branchInstructionSize = 0;
+        this.branchInstructionSize = branchInstructionSize;
 
         // Initialize the BHR register with the given size and no default value
         this.BHR = new SIPORegister("BHR", BHRSize, null);;
