@@ -21,19 +21,19 @@ public class PAs implements BranchPredictor {
 
     public PAs(int BHRSize, int SCSize, int branchInstructionSize, int KSize, HashMode hashMode) {
         // TODO: complete the constructor
-        this.branchInstructionSize = 0;
-        this.KSize = 0;
+        this.branchInstructionSize = branchInstructionSize;
+        this.KSize = KSize;
         this.hashMode = HashMode.XOR;
 
         // Initialize the PABHR with the given bhr and branch instruction size
-        PABHR = null;
+        PABHR = new RegisterBank(BHRSize, branchInstructionSize);
 
         // Initializing the PAPHT with K bit as PHT selector and 2^BHRSize row as each PHT entries
         // number and SCSize as block size
-        PSPHT = null;
+        PSPHT = new PerAddressPredictionHistoryTable(KSize, 1 << BHRSize, SCSize);
 
         // Initialize the saturating counter
-        SC = null;
+        SC = new SIPORegister("SC", SCSize, null);
     }
 
     /**
@@ -46,12 +46,38 @@ public class PAs implements BranchPredictor {
     @Override
     public BranchResult predict(BranchInstruction branchInstruction) {
         // TODO: complete Task 1
-        return BranchResult.NOT_TAKEN;
+        Bit[] jumpAddress = branchInstruction.getInstructionAddress();
+
+        // Read the associated block with the BHR value
+        ShiftRegister shiftRegister = PABHR.read(jumpAddress);
+        CombinationalLogic.hash(jumpAddress, KSize, HashMode.XOR);
+        Bit[] cacheEntry = getCacheEntry(jumpAddress, shiftRegister.read());
+        Bit[] cacheBlock = PSPHT.setDefault(cacheEntry, getDefaultBlock());
+
+
+        // Load the read block from the cache into the SC register
+        SC.load(cacheBlock);
+
+        // Return the MSB of the read block or SC register
+        return BranchResult.of(SC.read()[0] == Bit.ONE);
     }
 
     @Override
     public void update(BranchInstruction instruction, BranchResult actual) {
         // TODO:complete Task 2
+        Bit[] scBits = SC.read();
+        Bit[] count = CombinationalLogic.count(scBits, actual == BranchResult.TAKEN, CountMode.SATURATING);
+
+        Bit[] instructionAddress = instruction.getInstructionAddress();
+
+
+        // Save the updated value into the cache via BHR
+        PSPHT.put(getCacheEntry(instructionAddress, PABHR.read(instructionAddress).read()), count);
+
+        // Update the BHR with the actual branch result
+        ShiftRegister read = PABHR.read(instructionAddress);
+        read.insert(Bit.of(actual == BranchResult.TAKEN));
+        PABHR.write(instructionAddress, read.read());
     }
 
     @Override
