@@ -36,7 +36,7 @@ public class SAg implements BranchPredictor {
     public BranchResult predict(BranchInstruction instruction) {
         // TODO: complete Task 1
         Bit[] jumpAddress = instruction.getInstructionAddress();
-        
+
 
         // Read the associated block with the BHR value
         ShiftRegister shiftRegister = PSBHR.read(getRBAddressLine(jumpAddress));
@@ -65,7 +65,7 @@ public class SAg implements BranchPredictor {
         // Update the BHR with the actual branch result
         ShiftRegister read = PSBHR.read(getRBAddressLine(instructionAddress));
         read.insert(Bit.of(actual == BranchResult.TAKEN));
-        PSBHR.write(instructionAddress, read.read());
+        PSBHR.write(getRBAddressLine(instructionAddress), read.read());
     }
 
     private Bit[] getRBAddressLine(Bit[] branchAddress) {
