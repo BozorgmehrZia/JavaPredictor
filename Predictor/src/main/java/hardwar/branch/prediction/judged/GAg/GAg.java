@@ -44,7 +44,7 @@ public class GAg implements BranchPredictor {
         Bit[] bhrValue = BHR.read();
 
         // Read the associated block with the BHR value
-        Bit[] cacheBlock = PHT.get(bhrValue);
+        Bit[] cacheBlock = PHT.setDefault(bhrValue, getDefaultBlock());
 
         // Load the read block from the cache into the SC register
         SC.load(cacheBlock);
