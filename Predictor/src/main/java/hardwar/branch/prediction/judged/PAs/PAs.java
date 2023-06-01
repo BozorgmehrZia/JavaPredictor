@@ -26,7 +26,7 @@ public class PAs implements BranchPredictor {
         this.hashMode = HashMode.XOR;
 
         // Initialize the PABHR with the given bhr and branch instruction size
-        PABHR = new RegisterBank(BHRSize, branchInstructionSize);
+        PABHR = new RegisterBank(branchInstructionSize, BHRSize);
 
         // Initializing the PAPHT with K bit as PHT selector and 2^BHRSize row as each PHT entries
         // number and SCSize as block size
