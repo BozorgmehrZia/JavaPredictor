@@ -23,13 +23,13 @@ public class GAg implements BranchPredictor {
     public GAg(int BHRSize, int SCSize) {
         // TODO : complete the constructor
         // Initialize the BHR register with the given size and no default value
-        this.BHR = null;
+        this.BHR = new SIPORegister("BHR", BHRSize, getDefaultBlock());
 
         // Initialize the PHT with a size of 2^size and each entry having a saturating counter of size "SCSize"
-        PHT = null;
+        PHT = new PageHistoryTable(BHRSize, SCSize);
 
         // Initialize the SC register
-        SC = null;
+        SC = new SIPORegister("SC", SCSize, getDefaultBlock());
     }
 
     /**
@@ -41,7 +41,16 @@ public class GAg implements BranchPredictor {
     @Override
     public BranchResult predict(BranchInstruction branchInstruction) {
         // TODO : complete Task 1
-        return BranchResult.NOT_TAKEN;
+        Bit[] bhrValue = BHR.read();
+
+        // Read the associated block with the BHR value
+        Bit[] cacheBlock = PHT.get(bhrValue);
+
+        // Load the read block from the cache into the SC register
+        SC.load(cacheBlock);
+
+        // Return the MSB of the read block or SC register
+        return BranchResult.of(SC.read()[0] == Bit.ONE);
     }
 
     /**
@@ -53,6 +62,16 @@ public class GAg implements BranchPredictor {
     @Override
     public void update(BranchInstruction instruction, BranchResult actual) {
         // TODO: complete Task 2
+        Bit[] scBits = SC.read();
+        Bit[] count = CombinationalLogic.count(scBits, actual == BranchResult.TAKEN, CountMode.SATURATING);
+
+
+        // Save the updated value into the cache via BHR
+        Bit[] bhrValue = BHR.read();
+        PHT.put(bhrValue, count);
+
+        // Update the BHR with the actual branch result
+        BHR.insert(Bit.of(actual == BranchResult.TAKEN));
     }
 
 
