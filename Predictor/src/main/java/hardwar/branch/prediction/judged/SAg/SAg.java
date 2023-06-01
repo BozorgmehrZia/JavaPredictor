@@ -19,28 +19,53 @@ public class SAg implements BranchPredictor {
 
     public SAg(int BHRSize, int SCSize, int branchInstructionSize, int KSize) {
         // TODO: complete the constructor
-        this.branchInstructionSize = 0;
-        this.KSize = 0;
+        this.branchInstructionSize = branchInstructionSize;
+        this.KSize = KSize;
 
         // Initialize the PABHR with the given bhr and Ksize
-        PSBHR = null;
+        PSBHR = new RegisterBank(KSize, BHRSize);
 
         // Initialize the PHT with a size of 2^size and each entry having a saturating counter of size "SCSize"
-        PHT = null;
+        PHT = new PageHistoryTable(1 << BHRSize, SCSize);
 
         // Initialize the SC register
-        SC = null;
+        SC = new SIPORegister("SC", SCSize, null);
     }
 
     @Override
     public BranchResult predict(BranchInstruction instruction) {
         // TODO: complete Task 1
-        return BranchResult.NOT_TAKEN;
+        Bit[] jumpAddress = instruction.getInstructionAddress();
+        
+
+        // Read the associated block with the BHR value
+        ShiftRegister shiftRegister = PSBHR.read(getRBAddressLine(jumpAddress));
+        Bit[] cacheBlock = PHT.setDefault(shiftRegister.read(), getDefaultBlock());
+
+
+        // Load the read block from the cache into the SC register
+        SC.load(cacheBlock);
+
+        // Return the MSB of the read block or SC register
+        return BranchResult.of(SC.read()[0] == Bit.ONE);
     }
 
     @Override
     public void update(BranchInstruction branchInstruction, BranchResult actual) {
         // TODO: complete Task 2
+        Bit[] scBits = SC.read();
+        Bit[] count = CombinationalLogic.count(scBits, actual == BranchResult.TAKEN, CountMode.SATURATING);
+
+        Bit[] instructionAddress = branchInstruction.getInstructionAddress();
+
+
+        // Save the updated value into the cache via BHR
+        PHT.put(PSBHR.read(getRBAddressLine(instructionAddress)).read(), count);
+
+        // Update the BHR with the actual branch result
+        ShiftRegister read = PSBHR.read(getRBAddressLine(instructionAddress));
+        read.insert(Bit.of(actual == BranchResult.TAKEN));
+        PSBHR.write(instructionAddress, read.read());
     }
 
     private Bit[] getRBAddressLine(Bit[] branchAddress) {
